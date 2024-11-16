@@ -1,0 +1,102 @@
+{
+	// IntelliSense を使用して利用可能な属性を学べます。
+	// 既存の属性の説明をホバーして表示します。
+	// 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Mac g++ Debug",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${fileDirname}/${fileBasenameNoExtension}.exe",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${fileDirname}",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "lldb",
+			//"miDebuggerPath": "C:\\MinGW\\bin\\gdb.exe",
+			"setupCommands": [
+				{
+					"description": "gdb の再フォーマットを有効にする",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": true
+				}
+			],
+			"preLaunchTask": "C/C++: g++.exe アクティブなファイルのビルド"
+		},
+		{
+			"name": "Win g++ Debug",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${fileDirname}/${fileBasenameNoExtension}.exe",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${fileDirname}",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "gdb",
+			"miDebuggerPath": "C:\\TDM-GCC-64\\gdb64\\bin\\gdb.exe",
+			"setupCommands": [
+				{
+					"description": "gdb の再フォーマットを有効にする",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": true
+				}
+			],
+			"preLaunchTask": "C/C++: g++.exe アクティブなファイルのビルド",
+		},
+		{
+			"name": "Win dart debug",
+			"type": "dart",
+			"request": "launch",
+			"program": "${fileDirname}/${fileBasenameNoExtension}.dart",
+			"args": [],
+			"cwd": "${fileDirname}",
+			"console": "terminal",
+		},
+		{
+			"name": "Win .NET Script Debug",
+			"type": "coreclr",
+			"request": "launch",
+			"program": "dotnet",
+			"args": [
+				"exec",
+				"C:/Users/tokab/.dotnet/tools/.store/dotnet-script/1.5.0/dotnet-script/1.5.0/tools/net8.0/any/dotnet-script.dll",
+				"${file}"
+			],
+			"cwd": "${workspaceRoot}",
+			"stopAtEntry": false
+		},
+		{
+			"name": "Mac .NET Script Debug",
+			"type": "coreclr",
+			"request": "launch",
+			"program": "${env:HOME}/.dotnet/tools/dotnet-script",
+			"args": [
+				"${file}"
+			],
+			"windows": {
+				"program": "${env:USERPROFILE}/.dotnet/tools/dotnet-script.exe",
+			},
+			"cwd": "${workspaceFolder}",
+			"stopAtEntry": false,
+		},
+		{
+			"name": ".NET Core Launch (console)",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "Csharp build",
+			"program": "${workspaceFolder}/BuildRunEnv/KyopuroCsharpLocal/bin/Debug/net8.0/KyopuroCsharpLocal.dll",
+			"args": [],
+			"cwd": "${workspaceFolder}/BuildRunEnv/KyopuroCsharpLocal",
+			"console": "internalConsole",
+			"stopAtEntry": false
+		},
+		{
+			"name": ".NET Core Attach",
+			"type": "coreclr",
+			"request": "attach"
+		}
+	]
+}

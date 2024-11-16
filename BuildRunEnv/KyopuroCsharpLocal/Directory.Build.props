@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <UnixStylePath Condition="'$(OS)' == 'Windows_NT'">
+      $(MSBuildThisFileDirectory.Replace('\', '/'))
+    </UnixStylePath>
+  </PropertyGroup>
+</Project>
