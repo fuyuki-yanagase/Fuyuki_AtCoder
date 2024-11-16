@@ -623,6 +623,19 @@ class Kyopuro {
 	} // end of func
 
 	public void Solve() {
+		string s = read();
+		int one = 0;
+		int two = 0;
+		int three = 0;
+		foreach (var c in s) {
+			if (c == '1') one += 1;
+			if (c == '2') two += 1;
+			if (c == '3') three += 1;
+		}
+
+		if (one == 1 && two == 2 && three == 3) writeline("Yes");
+		else writeline("No");
+
 
 
 

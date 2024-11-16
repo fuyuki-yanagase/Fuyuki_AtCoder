@@ -624,39 +624,9 @@ class Kyopuro {
 
 	public void Solve() {
 		string s = read();
-		long len = s.Length;
-		int qnum = readint();
-		var query = readlongs();
+		string[] ss = s.Split('|');
+		for (int i = 1; i < ss.Length - 1; ++i) write(ss[i].Length + " ");
 
-		double log2;
-		Int128 bekijo;
-		bool changed = false; // false→もとの文字
-		bool debug = false;
-		foreach (var q in query) {
-			changed = false;
-
-			// 所属するブロック番号
-			Int128 num = (q - 1L) / len;
-
-			while (num > 0) {
-				bekijo = 1;
-				while (bekijo * 2 <= num) {
-					bekijo <<= 1;
-				}
-				changed = !changed;
-				num = num - bekijo;
-			}
-
-
-			int ind = (int)((q - 1) % (long)s.Length);
-			if (changed == false) {
-				write(s[ind]);
-			} else {
-				if ('a' <= s[ind] && s[ind] <= 'z') write((char)(s[ind] - 'a' + 'A'));
-				else write((char)(s[ind] - 'A' + 'a'));
-			}
-			write(" ");
-		}
 
 
 	} // end of method

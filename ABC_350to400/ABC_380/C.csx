@@ -584,14 +584,14 @@ class SortedMap<K, V> : SortedDictionary<K, V> {
 } // end of class
 
 /// 座標に便利(値型だけど16byteまではstructが速い)
-struct YX<T> {
-	public T y;
-	public T x;
-	public YX(T y, T x) {
-		this.y = y;
-		this.x = x;
+struct CN {
+	public char c;
+	public int n;
+	public CN(char c, int n) {
+		this.c = c;
+		this.n = n;
 	}
-	public override string ToString() => $"y:{y} x:{x}";
+	public override string ToString() => $"({c},{n})";
 } // end of class
 
 /// グラフをするときに(値型だけど16byteまではstructが速い)
@@ -623,39 +623,33 @@ class Kyopuro {
 	} // end of func
 
 	public void Solve() {
-		string s = read();
-		long len = s.Length;
-		int qnum = readint();
-		var query = readlongs();
+		var (n, k) = readintt2();
+		string s = read() + "_";
 
-		double log2;
-		Int128 bekijo;
-		bool changed = false; // false→もとの文字
-		bool debug = false;
-		foreach (var q in query) {
-			changed = false;
-
-			// 所属するブロック番号
-			Int128 num = (q - 1L) / len;
-
-			while (num > 0) {
-				bekijo = 1;
-				while (bekijo * 2 <= num) {
-					bekijo <<= 1;
-				}
-				changed = !changed;
-				num = num - bekijo;
-			}
-
-
-			int ind = (int)((q - 1) % (long)s.Length);
-			if (changed == false) {
-				write(s[ind]);
+		var list = new List<CN>();
+		var cn = new CN(s[0], 0);
+		for (int i = 0; i < n + 1; ++i) {
+			if (cn.c != s[i]) {
+				list.Add(cn);
+				cn = new CN(s[i], 1);
 			} else {
-				if ('a' <= s[ind] && s[ind] <= 'z') write((char)(s[ind] - 'a' + 'A'));
-				else write((char)(s[ind] - 'A' + 'a'));
+				cn.n += 1;
 			}
-			write(" ");
+		}
+
+
+		int cnt = 0;
+		for (int i = 0; i < list.Count; ++i) {
+			if (list[i].c == '1') cnt += 1;
+			if (cnt == k) {
+				var cn2 = new CN(list[i].c, list[i].n);
+				list[i] = list[i - 1];
+				list[i - 1] = cn2;
+			}
+		}
+
+		for (int i = 0; i < list.Count; ++i) {
+			for (int j = 0; j < list[i].n; ++j) write(list[i].c);
 		}
 
 
