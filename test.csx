@@ -625,6 +625,7 @@ class Kyopuro {
 	public void Solve() {
 		writeline("");
 		writeline("fugafuga");
+		writeline("hogehoge");
 
 
 	} // end of method
