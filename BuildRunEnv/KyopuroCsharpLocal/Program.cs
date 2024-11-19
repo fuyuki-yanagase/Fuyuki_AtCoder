@@ -614,6 +614,67 @@ struct Edge : IComparable<Edge> {
 	public override string ToString() => $"cost:{cost} from:{from} to:{to}";
 } // end of class
 
+/// union by rankと経路圧縮をする
+/// O(a(N)) 
+class UnionFind {
+	/// 親のノード番号
+	public int[] parents;
+
+	/// 属する集合の要素数　
+	public int[] sizes;
+
+	/// ノード数NのUnionFindを作成
+	public UnionFind(int n) {
+		this.parents = new int[n];
+		this.sizes = new int[n];
+		for (int i = 0; i < n; ++i) {
+			// 初期状態では親を持たない
+			this.parents[i] = -1;
+			// 集合サイズは1
+			this.sizes[i] = 1;
+		}
+	} // end of constructor
+
+	/// ノードiの親を返す
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public int Root(int node) {
+		// 根を見つけたらノード番号を変えす
+		if (this.parents[node] == -1) return node;
+
+		// 根までの経路を全て根に直接つなぐ
+		else {
+			int parent = this.Root(this.parents[node]);
+			this.parents[node] = parent;
+			return parent;
+		}
+	} // end of method
+
+	/// ノードuとvの属する集合を結合する
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public void Unite(int u, int v) {
+		int ru = this.Root(u);
+		int rv = this.Root(v);
+		if (ru == rv) return;
+		// 大きい集合の根に結合(union by rank)
+		// 高さが高々log2になる
+		if (ru > rv) {
+			int tmp = ru;
+			ru = rv;
+			rv = tmp;
+		}
+		this.parents[ru] = rv;
+		this.sizes[rv] = this.sizes[ru] + this.sizes[rv];
+		this.sizes[ru] = this.sizes[rv];
+	} // end of method
+
+	/// ノードuとvが同じ集合に属しているか
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public bool Connected(int u, int v) {
+		return this.Root(u) == this.Root(v);
+	} // end of method
+} // end of class
+
+
 class Kyopuro {
 	public static void Main() {
 		preprocess();
@@ -623,39 +684,64 @@ class Kyopuro {
 	} // end of func
 
 	public void Solve() {
-		string s = read();
-		long len = s.Length;
-		int qnum = readint();
-		var query = readlongs();
+		var (n, q) = readintt2();
+		var uf = new UnionFind(n);
+		var cnums = makearr(n, 1); // 色個数
+		var colors = new int[n]; // 場所→色
+		var cinds = new Dictionary<int, SortedSet<int>>(); // 色→場所
 
-		double log2;
-		Int128 bekijo;
-		bool changed = false; // false→もとの文字
-		bool debug = false;
-		foreach (var q in query) {
-			changed = false;
+		for (int i = 0; i < n; ++i) {
+			colors[i] = i;
+			cinds[i] = new SortedSet<int>();
+			cinds[i].Add(i);
+		}
 
-			// 所属するブロック番号
-			Int128 num = (q - 1L) / len;
+		for (int _ = 0; _ < q; ++_) {
+			var input = readints();
+			if (input[0] == 1) {
+				int x = input[1] - 1;
+				int c = input[2] - 1;
 
-			while (num > 0) {
-				bekijo = 1;
-				while (bekijo * 2 <= num) {
-					bekijo <<= 1;
+				// 同じ色に塗るのは変わらない
+				int root = uf.Root(x);
+				int rootcolor = colors[root];
+				// if (rootcolor == c) continue;
+
+				// 個数移動
+				cnums[rootcolor] -= uf.sizes[root];
+				cnums[c] += uf.sizes[root];
+
+				// 色変更
+				colors[root] = c;
+
+				// 色→場所から削除
+				cinds[rootcolor].Remove(x);
+				cinds[rootcolor].Remove(root);
+
+				// 塗った後が隣接マスと同じ色なら結合
+				if (0 < x && colors[uf.Root(x - 1)] == c) {
+					uf.Unite(x - 1, x);
 				}
-				changed = !changed;
-				num = num - bekijo;
-			}
 
+				// right
+				if (x < n - 1 && colors[uf.Root(x + 1)] == c) {
+					uf.Unite(x + 1, x);
+				}
 
-			int ind = (int)((q - 1) % (long)s.Length);
-			if (changed == false) {
-				write(s[ind]);
+				// 同じ色と結合
+
 			} else {
-				if ('a' <= s[ind] && s[ind] <= 'z') write((char)(s[ind] - 'a' + 'A'));
-				else write((char)(s[ind] - 'A' + 'a'));
+				int x = input[1] - 1;
+				int root = uf.Root(x);
+				int rootcolor = colors[root];
+				writeline(cnums[rootcolor]);
 			}
-			write(" ");
+
+			for (int i = 0; i < n; ++i) write(uf.Root(i));
+			// write(" cnums:");
+			// printlist(cnums);
+			write(" colors:");
+			printlist(colors);
 		}
 
 
