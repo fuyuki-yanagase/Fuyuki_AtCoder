@@ -623,29 +623,11 @@ class Kyopuro {
 	} // end of func
 
 	public void Solve() {
-		var (n, k) = readintt2();
-		string s = read();
-		var arr = new int[n];
-		for (int i = 0; i < n; ++i) arr[i] = s[i] == 'O' ? 0 : 1;
-
-
-		int ans = 0;
-		for (int i = 0; i <= n - k; ++i) {
-			bool flag = true;
-			for (int j = i; j < i + k; ++j) {
-				if (arr[j] == 1) {
-					flag = false;
-					break;
-				}
-
-			}
-			if (flag == false) continue;
-			ans += 1;
-			for (int j = i; j < i + k; ++j) arr[j] = 1;
-
-		}
-
-		writeline(ans);
+		var s = read();
+		char a = s[0];
+		char b = s[1];
+		char c = s[2];
+		writeline("" + b + c + a + " " + c + a + b);
 
 
 	} // end of method
