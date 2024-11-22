@@ -614,6 +614,20 @@ struct Edge : IComparable<Edge> {
 	public override string ToString() => $"cost:{cost} from:{from} to:{to}";
 } // end of class
 
+
+class Node {
+	public int c;
+	public int length;
+
+	public Node(int c, int length) {
+		this.c = c;
+		this.length = length;
+	}
+
+	public override string ToString() => $"({this.c}, {this.length})";
+}
+
+
 class Kyopuro {
 	public static void Main() {
 		preprocess();
@@ -624,31 +638,63 @@ class Kyopuro {
 
 	public void Solve() {
 		int n = readint();
-		string s = read();
+		var s = new List<int>(readints());
+		s.Add(-1);
 
-		if (n % 2 == 0) {
-			writeno();
-			return;
-		}
-
-		for (int i = 0; i < n / 2; ++i) {
-			if (s[i] != '1') {
-				writeno();
-				return;
+		var list = new List<Node>();
+		int prev = s[0];
+		int count = 1;
+		for (int i = 1; i < s.Count; ++i) {
+			if (s[i] != prev) {
+				list.Add(new Node(prev, count));
+				prev = s[i];
+				count = 1;
+			} else {
+				count += 1;
 			}
 		}
-		if (s[n / 2] != '/') {
-			writeno();
-			return;
-		}
-		for (int i = n / 2 + 1; i < s.Length; ++i) {
-			if (s[i] != '2') {
-				writeno();
-				return;
+
+		list.Add(new Node(-1, -1));
+		// printlist(list);
+
+		var llist = new List<Node>();
+		int ans = 0;
+		for (int i = 0; i < list.Count; ++i) {
+			// 先頭で2個以上ならOK
+			if (llist.Count == 0 && list[i].length >= 2) {
+				llist.Add(list[i]);
+			}
+			// 2個ならいつでもOK
+			else if (list[i].length == 2) {
+				llist.Add(list[i]);
+			} else {
+				if (llist.Count == 0) continue;
+
+				// 末尾も2個以上ならOK
+				if (list[i].length >= 2) llist.Add(list[i]);
+
+				// llist.Add(new Node(-1, -1));
+				int start = 0;
+				var set = new HashSet<int>();
+
+				for (int end = 0; end < llist.Count; ++end) {
+					// 重複がなくなるまで
+					while (set.Contains(llist[end].c)) {
+						set.Remove(llist[start].c);
+						start += 1;
+					}
+					set.Add(llist[end].c);
+					ans = Max(ans, end - start + 1);
+				}
+
+				llist = new List<Node>();
+
+				// 末尾が先頭になるかもしれないので
+				--i;
 			}
 		}
-		writeyes();
 
+		writeline(ans << 1);
 
 	} // end of method
 } // end of class
