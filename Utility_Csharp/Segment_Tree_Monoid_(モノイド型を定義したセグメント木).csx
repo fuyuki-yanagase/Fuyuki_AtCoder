@@ -516,10 +516,10 @@ interface ISegmentTreeOperator<T> {
 /// ジェネリック版、中身の改造には不向き
 class SegmentTreeGeneric<T, T_op> where T : IComparable, IFormattable, IConvertible, IComparable<T>, IEquatable<T> where T_op : struct, ISegmentTreeOperator<T> {
 	/// 一番下の葉の数 (2のべき乗になってるはず)
-	public int LeafNum { get; set; }
+	public int LeafNum { get; private set; }
 
 	/// ノード全体の要素数
-	public int Count { get => this.Node.Length; }
+	public int Count { get => this.Node.Length - 1; }
 
 	/// 実際に木を構築するノード
 	public T[] Node { get; set; }
@@ -540,14 +540,15 @@ class SegmentTreeGeneric<T, T_op> where T : IComparable, IFormattable, IConverti
 		while (this.LeafNum < arr.Length) this.LeafNum <<= 1;
 
 		// 葉の初期化
-		this.Node = new T[this.LeafNum * 2 - 1];
-		for (int i = 0; i < this.Count; ++i) this.Node[i] = this.Operator.Identity;
-		for (int i = 0; i < arr.Length; ++i) this.Node[this.LeafNum - 1 + i] = arr[i];
+		this.Node = new T[this.LeafNum << 1];
+		for (int i = 1; i < this.Count; ++i) this.Node[i] = this.Operator.Identity;
+
+		for (int i = 0; i < arr.Length; ++i) this.Node[this.LeafNum + i] = arr[i];
 
 		// 親ノードの値を決めていく
 		for (int i = this.LeafNum - 2; i >= 0; --i) {
 			// 左右と比較
-			this.Node[i] = this.Operator.Operate(this.Node[2 * i + 1], this.Node[2 * i + 2]);
+			this.Node[i] = this.Operator.Operate(this.Node[i << 1], this.Node[(i << 1) | 1]);
 		}
 	} // end of constructor
 
@@ -555,41 +556,27 @@ class SegmentTreeGeneric<T, T_op> where T : IComparable, IFormattable, IConverti
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Update(int index, T value) {
 		// 葉の更新
-		index += this.LeafNum - 1;
+		index += this.LeafNum;
 		this.Node[index] = value;
 
 		// 親の更新
-		while (index > 0) {
-			index = (index - 1) / 2;
+		while ((index >>= 1) > 0) {
 			// 左右と比較
-			this.Node[index] = this.Operator.Operate(this.Node[2 * index + 1], this.Node[2 * index + 2]);
+			this.Node[index] = this.Operator.Operate(this.Node[index << 1], this.Node[(index << 1) | 1]);
 		}
 	} // end of update
 
-	/// [l, r) の区間◯◯値を求める(求まる値はOperatorで指定されてる)
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public T Query(int l, int r) {
-		return this.Query(l, r, 0, 0, this.LeafNum);
-	} // end of method
+		T leftResult = this.Operator.Identity;
+		T rightResult = this.Operator.Identity;
 
-	/// [l, r) は求めたい半開区間
-	/// k は現在のノード番号
-	/// [a, b) はkに対応する半開区間
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private T Query(int l, int r, int k, int a, int b) {
-		// 現在の対応ノード区間が求めたい区間に含まれないとき
-		// → 単位元を返す
-		if (r <= a || b <= l) return this.Operator.Identity;
+		for (l += this.LeafNum, r += this.LeafNum; l < r; l >>= 1, r >>= 1) {
+			if ((l & 1) > 0) leftResult = this.Operator.Operate(leftResult, this.Node[l++]);
+			if ((r & 1) > 0) rightResult = this.Operator.Operate(this.Node[--r], rightResult);
+		}
 
-		// 現在の対応ノード区間が求めたい区間に完全に含まれるとき
-		// → 現在のノードの値を返す
-		if (l <= a && b <= r) return this.Node[k];
-
-		// 左半分と右半分で見る
-		int m = (a + b) / 2;
-		T leftValue = Query(l, r, k * 2 + 1, a, m);
-		T rightValue = Query(l, r, k * 2 + 2, m, b);
-		return this.Operator.Operate(leftValue, rightValue);
+		return this.Operator.Operate(leftResult, rightResult);
 	} // end of method
 } // end of class
 
@@ -625,7 +612,6 @@ class Kyopuro {
 				writeline(segtree.Query(l, r));
 			}
 		}
-
 
 	} // end of func
 } // end of class
