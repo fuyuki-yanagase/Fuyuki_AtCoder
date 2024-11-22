@@ -47,7 +47,7 @@ public class SegmentTreeGeneric<T> where T : struct, IComparable, IFormattable, 
 		for (int i = 0; i < arr.Length; ++i) this.Node[this.LeafNum + i] = arr[i];
 
 		// 親ノードの値を決めていく
-		for (int i = this.LeafNum - 2; i >= 0; --i) {
+		for (int i = this.LeafNum - 1; i >= 0; --i) {
 			// 左右と比較
 			this.Node[i] = this.Operator(this.Node[i << 1], this.Node[(i << 1) | 1]);
 		}
@@ -120,13 +120,13 @@ public class SegmentTree {
 		while (this.LeafNum < arr.Length) this.LeafNum <<= 1;
 
 		// 葉の初期化
-		this.Node = new long[this.LeafNum * 2 - 1];
+		this.Node = new long[this.LeafNum << 1];
 		for (int i = 1; i < this.Count; ++i) this.Node[i] = this.Identity;
 
 		for (int i = 0; i < arr.Length; ++i) this.Node[this.LeafNum + i] = arr[i];
 
 		// 親ノードの値を決めていく
-		for (int i = this.LeafNum - 2; i >= 0; --i) {
+		for (int i = this.LeafNum - 1; i >= 0; --i) {
 			// 左右と比較
 			this.Node[i] = this.Operator(this.Node[i << 1], this.Node[(i << 1) | 1]);
 		}

@@ -82,7 +82,8 @@ public class Util {
 	public static int a10_9 = 1000000000;
 	public static long a10_18 = 1000000000000000000;
 	public static int iinf = 1 << 31;
-	public static long linf = (1l << 61) - (1l << 31);
+	// public static long linf = (1l << 61) - (1l << 31);
+	public static long linf = (1l << 31) - 1;
 
 	/// 打ちやすいように
 	public static string read() => ReadLine();
@@ -497,44 +498,45 @@ class Edge {
 	}
 } // end of class
 
-
-/// セグメント木の要素となるモノイドT
-/// 結合律 : Tの任意の元 a,b,c に対して (a・b)・c = a・(b・c)
-/// 単位元 : Tの元 e が存在し、Tの任意の元 a に対して e・a = a・e = a
-interface ISegmentTreeOperator<T> {
-	/// 単位元
-	/// minならばinf, maxならば-inf, sumならば0
-	T Identity { get; }
-
-	/// Tの元 x,y の演算を定義する
-	/// min, max, sum などはモノイド
-	T Operate(T x, T y);
-} // end of interface
+/// ----------------------------------------------------------------------------------------------------------------
+/// ----------------------------------------------------------------------------------------------------------------
+/// ----------------------------------------------------------------------------------------------------------------
 
 
-/// 通常のセグメント木(範囲検索、1つ更新をlogN)
-/// ジェネリック版、中身の改造には不向き
-class SegmentTreeGeneric<T, T_op> where T : IComparable, IFormattable, IConvertible, IComparable<T>, IEquatable<T> where T_op : struct, ISegmentTreeOperator<T> {
-	/// 一番下の葉の数 (2のべき乗になってるはず)
+/// <summary>
+/// 遅延評価セグメント木 <br/>
+/// 区間検索、区間更新がO(logN) <br/>
+/// </summary>
+class LazySegmentTree<T, F, T_op>
+								// where T : IComparable, IFormattable, IConvertible, IComparable<T>, IEquatable<T>
+								// where F : IComparable, IFormattable, IConvertible, IComparable<T>, IEquatable<T>
+								where T_op : struct, ILazySegmentTreeOperator<T, F> {
+	/// <summary>一番下の葉の数 (2のべき乗になってるはず)</summary>
 	public int LeafNum { get; private set; }
 
-	/// ノード全体の要素数
+	/// <summary>ノード全体の要素数</summary>
 	public int Count { get => this.Node.Length - 1; }
 
-	/// 実際に木を構築するノード
+	/// <summary実際に木を構築するノード</summary>
 	public T[] Node { get; set; }
 
-	/// 作用素 (TとTに対する演算結果Tを返す min, max, sumなど)
-	/// 単位元もここに含まれている
+	/// <summary>
+	/// 遅延評価をまとめた配列 <br/>
+	/// 更新時はここをいじる <br/>
+	/// </summary>
+	public F[] Lazy { get; set; }
+
+	/// <summary>
+	/// 作用素 (TとTに対する演算結果Tを返す min, max, sumなど) <br/>
+	/// 単位元、恒等写像、mapping, compositionがまとまっている <br/>
+	/// </summary>
 	private readonly T_op Operator = default(T_op);
 
-
-	/// 元配列を渡してセグメントツリーの作成
-	/// 初期値はminやmaxなどで変わると思うので与える(デフォルト=0のはず)
-	public SegmentTreeGeneric(T[] arr) {
-		// // 作用素を保存
-		// this.Operator = op;
-
+	/// <summary>
+	/// 元配列を渡してセグメントツリーの作成 <br/>
+	/// それ以外はOperatorに定義  <br/>
+	/// </summary>
+	public LazySegmentTree(T[] arr) {
 		// ノード数を　2^⌈log2(N)⌉　にする
 		this.LeafNum = 1;
 		while (this.LeafNum < arr.Length) this.LeafNum <<= 1;
@@ -545,42 +547,155 @@ class SegmentTreeGeneric<T, T_op> where T : IComparable, IFormattable, IConverti
 
 		for (int i = 0; i < arr.Length; ++i) this.Node[this.LeafNum + i] = arr[i];
 
+		// 遅延配列の初期化
+		this.Lazy = new F[this.LeafNum << 1];
+		for (int i = 0; i < this.Count; ++i) this.Lazy[i] = this.Operator.FIdentity;
+
 		// 親ノードの値を決めていく
 		for (int i = this.LeafNum - 1; i >= 0; --i) {
 			// 左右と比較
 			this.Node[i] = this.Operator.Operate(this.Node[i << 1], this.Node[(i << 1) | 1]);
 		}
+
 	} // end of constructor
 
-	/// index番目の値をvalueにする
+	/// <summary>
+	/// k番目のノードを遅延評価する(ACLではApply) <br/>
+	/// 着目ノードkに対して Node[k] = f(Node[k]) <br/>
+	/// 着目ノードを更新したら、1つしたの子に伝播 <br/>
+	/// </summary>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public void Update(int index, T value) {
-		// 葉の更新
-		index += this.LeafNum;
-		this.Node[index] = value;
+	public void Evaluate(int k, int l, int r) {
+		// 遅延配列が恒等写像の時は更新内容がない
+		if (EqualityComparer<F>.Default.Equals(this.Lazy[k], this.Operator.FIdentity)) return;
 
-		// 親の更新
-		while ((index >>= 1) > 0) {
-			// 左右と比較
-			this.Node[index] = this.Operator.Operate(this.Node[index << 1], this.Node[(index << 1) | 1]);
+		// 注目ノードに遅延評価の写像を作用させる
+		this.Node[k] = this.Operator.Mapping(this.Lazy[k], this.Node[k]);
+
+		// 子を持っているなら(最下段の葉で無いなら)
+		if (r - l > 1) {
+			// composittionで遅延評価の写像を子に合成する
+			this.Lazy[k << 1] = this.Operator.Composition(this.Lazy[k], this.Lazy[k << 1]);
+			this.Lazy[(k << 1) | 1] = this.Operator.Composition(this.Lazy[k], this.Lazy[(k << 1) | 1]);
 		}
-	} // end of update
 
+		// 伝播が終わったので自ノードの遅延評価を恒等写像に戻す
+		this.Lazy[k] = this.Operator.FIdentity;
+	} // end of method
+
+
+
+	/// <summary>
+	/// [l, r)の範囲を更新する <br/>
+	/// x は更新に使用する写像 min,maxならxと比較、addならxを足す <br/>
+	///</summary>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public void Update(int l, int r, F x) {
+		this.Update(l, r, 1, 1, this.LeafNum + 1, x);
+	} // end of Method
+
+	/// <summary>
+	/// [l, r)の範囲を更新する
+	/// k は現在のノード番号 <br/>
+	/// [a, b) はkが対応する半開区間 <br/>	
+	/// x は更新に使用する写像 min,maxならxと比較、addならxを足す <br/>
+	///</summary>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public void Update(int l, int r, int k, int a, int b, F x) {
+		// 着目ノードを評価する
+		this.Evaluate(k, a, b);
+
+		// 現在の対応ノード区間が求めたい区間に含まれないときは更新なし
+		if (r <= a || b <= l) return;
+
+		// 現在の対応ノード区間が求めたい区間に完全に含まれるとき
+		// → 遅延配列を評価
+		if (l <= a && b <= r) {
+			this.Lazy[k] = this.Operator.Composition(x, this.Lazy[k]);
+			this.Evaluate(k, a, b);
+		}
+
+		// そうでないなら左右の子のノードを再帰的に計算
+		// → 計算済みの値をもらって自身を更新
+		else {
+			int m = (a + b) / 2;
+			this.Update(l, r, k * 2 + 1, a, m, x);
+			this.Update(l, r, k * 2 + 2, m, b, x);
+			this.Node[k] = this.Operator.Operate(this.Node[2 * k + 1], this.Node[2 * k + 2]);
+		}
+	} // end of method
+
+
+	/// [l, r) の区間◯◯値を求める(求まる値はOperatorで指定されてる)
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public T Query(int l, int r) {
-		T leftResult = this.Operator.Identity;
-		T rightResult = this.Operator.Identity;
+		return this.Query(l, r, 0, 0, this.LeafNum);
+	} // end of method
 
-		for (l += this.LeafNum, r += this.LeafNum; l < r; l >>= 1, r >>= 1) {
-			if ((l & 1) > 0) leftResult = this.Operator.Operate(leftResult, this.Node[l++]);
-			if ((r & 1) > 0) rightResult = this.Operator.Operate(this.Node[--r], rightResult);
-		}
+	/// [l, r) は求めたい半開区間 <br/>
+	/// k は現在のノード番号 <br/>
+	/// [a, b) はkに対応する半開区間 <br/>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private T Query(int l, int r, int k, int a, int b) {
+		// 現在の対応ノード区間が求めたい区間に含まれないとき
+		// → 単位元を返す
+		if (r <= a || b <= l) return this.Operator.Identity;
 
-		return this.Operator.Operate(leftResult, rightResult);
+		// 着目ノードを評価する
+		this.Evaluate(k, a, b);
+
+		// 現在の対応ノード区間が求めたい区間に完全に含まれるとき
+		// → 現在のノードの値を返す
+		if (l <= a && b <= r) return this.Node[k];
+
+		// 左半分と右半分で見る
+		int m = (a + b) / 2;
+		T leftValue = Query(l, r, k * 2 + 1, a, m);
+		T rightValue = Query(l, r, k * 2 + 2, m, b);
+		return this.Operator.Operate(leftValue, rightValue);
 	} // end of method
 } // end of class
 
+/// <summary>
+/// セグメント木の要素となるモノイド <br/>
+/// 結合律 : Tの任意の元 a,b,c に対して (a・b)・c = a・(b・c) <br/>
+/// 単位元 : Tの元 e が存在し、Tの任意の元 a に対して e・a = a・e = a <br/>
+/// T → データの型 <br/>
+/// F → 写像の型 <br/>
+/// </summary>
+/// <typeparam name="T">データの型</typeparam>
+/// <typeparam name="F">写像の型</typeparam>
+interface ILazySegmentTreeOperator<T, F> {
+	/// <summary>
+	/// 単位元 <br />
+	/// minならばinf, maxならば-inf, sumならば0 <br />
+	/// </summary>
+	T Identity { get; }
 
+	/// <summary>
+	/// Mapping(<paramref name="FIdentity"/>, x) = x を満たす恒等写像。
+	/// </summary>
+	F FIdentity { get; }
+
+	/// Tの元 x,y の演算を定義する
+	/// min, max, sum などはモノイド
+	T Operate(T x, T y);
+
+	/// <summary>
+	/// 写像　<paramref name="f"/> を <paramref name="x"/> に作用させる関数。
+	/// </summary>
+	T Mapping(F f, T x);
+
+	/// <summary>
+	/// 写像　<paramref name="nf"/> を既存の写像 <paramref name="cf"/> に対して合成した写像 <paramref name="nf"/>∘<paramref name="cf"/>。
+	/// </summary>
+	F Composition(F nf, F cf);
+} // end of interface
+
+
+/// ----------------------------------------------------------------------------------------------------------------
+/// ----------------------------------------------------------------------------------------------------------------
+/// ----------------------------------------------------------------------------------------------------------------
 
 class Kyopuro {
 	public static void Main() {
@@ -590,28 +705,46 @@ class Kyopuro {
 		finalprocess();
 	} // end of func
 
-	// モノイドを定義 Max
-	struct op : ISegmentTreeOperator<long> {
-		public long Identity { get => -1; }
-		public long Operate(long a, long b) => Max(a, b);
+	static readonly long linf = (1l << 31) - 1;
+
+	// モノイドを定義 区間最小、範囲更新
+	struct op_min : ILazySegmentTreeOperator<long, long> {
+		public long Identity { get => linf; }
+		public long FIdentity { get => linf; }
+		public long Operate(long a, long b) => Min(a, b);
+		public long Mapping(long f, long x) => f;
+		public long Composition(long f, long g) => f;
+	}
+
+	// モノイドを定義 区間合計、範囲加算
+	struct op_sum : ILazySegmentTreeOperator<(long, int), long> {
+		public (long, int) Identity { get => (0l, 0); }
+		public long FIdentity { get => 0l; }
+		public (long, int) Operate((long, int) a, (long, int) b) => (a.Item1 + b.Item1, a.Item2 + b.Item2);
+		public (long, int) Mapping(long f, (long, int) x) => (x.Item1 + x.Item2 * f, x.Item2);
+		public long Composition(long f, long g) => f + g;
 	}
 
 	public void Solve() {
-		// https://atcoder.jp/contests/tessoku-book/tasks/tessoku_book_bf
+		// https://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=DSL_2_F&lang=ja
 		var (n, q) = readintt2();
-		var segtree = new SegmentTreeGeneric<long, op>(new long[n]);
+		var segtree = new LazySegmentTree<long, long, op_min>(makearr(n, linf));
+
+		// sumの方法
+		// var segtree = new LazySegmentTree<(long, int), long, op_sum>(makearr(n, 1));
+
 		for (int i = 0; i < q; ++i) {
 			var s = readsplit();
-			if (s[0] == "1") {
-				int p = int.Parse(s[1]) - 1;
-				long x = long.Parse(s[2]);
-				segtree.Update(p, x);
+			if (s[0] == "0") {
+				int l = int.Parse(s[1]);
+				int r = int.Parse(s[2]) + 1;
+				long x = long.Parse(s[3]);
+				segtree.Update(l, r, x);
 			} else {
-				int l = int.Parse(s[1]) - 1;
-				int r = int.Parse(s[2]) - 1;
+				int l = int.Parse(s[1]);
+				int r = int.Parse(s[2]) + 1;
 				writeline(segtree.Query(l, r));
 			}
 		}
-
 	} // end of func
 } // end of class
